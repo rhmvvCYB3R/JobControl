@@ -3,7 +3,7 @@
   const $ = id => document.getElementById(id);
   let jobs = load();
   const fields = ["employer","address","salary","days","hours","interview","internship"];
-  const labels = ["Работодатель","Адрес","Зарплата","Дней в неделю","Часов в смене","Собеседование","Стажировка"];
+  let deferredInstallPrompt = null;
   function load(){ try { const value = JSON.parse(localStorage.getItem(KEY) || "[]"); return Array.isArray(value) ? value : []; } catch { return []; } }
   function save(){ localStorage.setItem(KEY, JSON.stringify(jobs)); }
   function safe(value){ return String(value ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
@@ -33,9 +33,10 @@
     if(!jobs.length){ root.innerHTML = '<div class="empty">Добавьте предложения, чтобы сравнить зарплату и график.</div>'; return; }
     const head = jobs.map(j => `<th>${safe(j.employer)}</th>`).join("");
     const row = (label, fn) => `<tr><td>${label}</td>${jobs.map(j => `<td>${safe(fn(j))}</td>`).join("")}</tr>`;
-    root.innerHTML = `<div class="compare-wrap"><table><thead><tr><th>Показатель</th>${head}</tr></thead><tbody>
+    const sizeClass = jobs.length > 7 ? "tiny" : jobs.length > 4 ? "compact" : "";
+    root.innerHTML = `<div class="compare-wrap"><table class="${sizeClass}" aria-label="Сравнение предложений"><thead><tr><th>Пункт</th>${head}</tr></thead><tbody>
       ${row("Зарплата",j=>j.salary)}
-      ${row("График",j=>`${j.days} дн. × ${j.hours} ч.`)}
+      ${row("График",j=>`${j.days} дн.<br>× ${j.hours} ч.`)}
     </tbody></table></div>`;
   }
   function render(){ renderList(); renderCompare(); }
@@ -55,6 +56,26 @@
     $("listView").hidden = tab.dataset.view !== "list";
     $("compareView").hidden = tab.dataset.view !== "compare";
   }));
+
+  const isStandalone = window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone;
+  const installBtn = $("installBtn");
+  if(!isStandalone){ installBtn.hidden = false; }
+  window.addEventListener("beforeinstallprompt", event => {
+    event.preventDefault(); deferredInstallPrompt = event; installBtn.hidden = false;
+  });
+  installBtn.addEventListener("click", async () => {
+    if(deferredInstallPrompt){
+      deferredInstallPrompt.prompt();
+      await deferredInstallPrompt.userChoice;
+      deferredInstallPrompt = null;
+      installBtn.hidden = true;
+      return;
+    }
+    $("installModal").hidden = false;
+  });
+  $("closeInstallTip").addEventListener("click", () => $("installModal").hidden = true);
+  $("installModal").addEventListener("click", event => { if(event.target === $("installModal")) $("installModal").hidden = true; });
+  window.addEventListener("appinstalled", () => installBtn.hidden = true);
   render();
 })();
 if ("serviceWorker" in navigator && (location.protocol === "https:" || location.hostname === "localhost")) { window.addEventListener("load", () => navigator.serviceWorker.register("./sw.js").catch(() => {})); }

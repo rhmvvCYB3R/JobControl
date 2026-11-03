@@ -5,6 +5,7 @@
   "lang": "ru",
   "start_url": "./",
   "scope": "./",
+  "id": "./",
   "display": "standalone",
   "background_color": "#0b1220",
   "theme_color": "#101827",
