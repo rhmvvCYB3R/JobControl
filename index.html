@@ -20,6 +20,7 @@
   header{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px}
   h1{font-size:20px;letter-spacing:-.6px;margin:0;font-weight:800}.sub{color:var(--muted);font-size:10px;margin-top:1px}
   .header-actions{display:flex;gap:5px}.primary,.secondary,.danger{border-radius:8px;padding:7px 10px;font-size:11px;font-weight:700}.primary{background:linear-gradient(135deg,var(--accent-2),var(--accent));color:#07101d;box-shadow:0 4px 16px #287ad12e}.secondary{background:var(--panel-2);color:var(--text);border:1px solid var(--line)}.danger{background:#37202a;color:#ffbac7;border:1px solid #613342}
+  button:focus-visible,input:focus-visible{outline:2px solid var(--accent-2);outline-offset:2px}.tab[aria-selected="true"]{color:white}.count{display:inline-grid;place-items:center;min-width:18px;height:18px;padding:0 5px;margin-left:4px;border-radius:9px;background:#263b55;color:#bed4ee;font-size:9px;vertical-align:1px}
   #installBtn[hidden]{display:none!important}
   .tabs{display:grid;grid-template-columns:1fr 1fr;background:#0d1726;border:1px solid var(--line);border-radius:10px;padding:3px;gap:3px;margin-bottom:10px}.tab{border-radius:7px;background:transparent;color:var(--muted);padding:7px;font-size:11px;font-weight:700}.tab.active{background:var(--panel-2);color:white;box-shadow:0 1px 8px #0004}
   .view[hidden],.modal[hidden]{display:none!important}
@@ -27,11 +28,13 @@
   .empty{border:1px dashed #35506c;border-radius:10px;padding:22px 12px;text-align:center;color:var(--muted);font-size:11px;background:#111c2c66}
   .compare-wrap{width:100%;overflow:hidden;border:1px solid var(--line);border-radius:10px;background:var(--panel)}table{border-collapse:collapse;width:100%;table-layout:fixed;font-size:10px}th,td{height:42px;padding:5px 3px;border-bottom:1px solid var(--line);border-right:1px solid var(--line);text-align:center;overflow-wrap:anywhere;word-break:break-word}th:first-child,td:first-child{width:64px;background:#17273d;text-align:left;font-size:9px;font-weight:700}th{color:#bcd0e9;background:#17273d;font-weight:750}tr:last-child td,tr:last-child th{border-bottom:0}td:last-child,th:last-child{border-right:0}.compare-wrap table.compact{font-size:8px}.compare-wrap table.compact th:first-child,.compare-wrap table.compact td:first-child{width:58px;font-size:8px}.compare-wrap table.tiny{font-size:7px}.compare-wrap table.tiny th,.compare-wrap table.tiny td{padding:3px 1px}.compare-wrap table.tiny th:first-child,.compare-wrap table.tiny td:first-child{width:52px;font-size:7px}.compare-note{font-size:9px;color:var(--muted);margin:6px 2px 0}
   .modal{position:fixed;inset:0;background:#030915d9;display:flex;align-items:center;justify-content:center;padding:10px;z-index:5;backdrop-filter:blur(4px)}.dialog{width:min(100%,410px);max-height:94dvh;overflow:auto;background:linear-gradient(145deg,#162238,#101b2b);border:1px solid #334d6b;border-radius:12px;padding:12px;box-shadow:0 18px 60px #0009}.dialog h2{font-size:14px;margin:0 0 9px}.fields{display:grid;gap:7px}.field{display:grid;gap:2px}.field label{font-size:9px;color:#aec0d5}.field input{width:100%;min-width:0;background:#091421;border:1px solid var(--line);border-radius:7px;color:var(--text);padding:7px 8px;font-size:11px}.field input:focus{outline:1px solid var(--accent);border-color:var(--accent)}.dialog-actions{display:flex;justify-content:flex-end;gap:5px;margin-top:10px}.hint{font-size:9px;color:var(--muted);margin:8px 0 0}.install-tip strong{display:block;margin-bottom:6px}.install-tip p{color:#becde0;font-size:11px;margin:6px 0 0}
+  .empty-action{margin-top:12px}.toast{position:fixed;left:50%;bottom:max(18px,env(safe-area-inset-bottom));z-index:20;transform:translate(-50%,20px);opacity:0;pointer-events:none;background:#eaf3ff;color:#102039;border-radius:9px;padding:9px 13px;font-size:11px;font-weight:700;box-shadow:0 10px 35px #0008;transition:.22s ease}.toast.show{transform:translate(-50%,0);opacity:1}.offline{display:none;margin-bottom:8px;padding:7px 9px;border-radius:8px;background:#3d3020;color:#ffdda8;font-size:10px;text-align:center}.offline.show{display:block}
   @media(max-width:360px){.wrap{padding-left:8px;padding-right:8px}.sub{display:none}h1{font-size:18px}.primary,.secondary,.danger{padding:7px 8px}.job{padding:8px}.tabs{margin-bottom:8px}.tab{padding:6px}}
   </style>
 </head>
 <body>
   <main class="wrap">
+    <div id="offline" class="offline" role="status">Нет подключения — сохранённые предложения доступны офлайн</div>
     <header>
       <div><h1>JobControl</h1><div class="sub">Предложения о работе — в одном месте</div></div>
       <div class="header-actions">
@@ -40,8 +43,8 @@
       </div>
     </header>
     <nav class="tabs" aria-label="Разделы">
-      <button class="tab active" data-view="list">Предложения</button>
-      <button class="tab" data-view="compare">Сравнение</button>
+      <button class="tab active" data-view="list" role="tab" aria-selected="true">Предложения <span id="jobCount" class="count">0</span></button>
+      <button class="tab" data-view="compare" role="tab" aria-selected="false">Сравнение</button>
     </nav>
     <section id="listView" class="view"><div id="jobsList" class="list"></div></section>
     <section id="compareView" class="view" hidden>
@@ -67,6 +70,8 @@
       <div class="dialog-actions"><button type="button" class="secondary" id="cancelBtn">Отмена</button><button type="submit">Сохранить</button></div>
     </form>
   </div>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
   <div id="installModal" class="modal" hidden>
     <div class="dialog install-tip">
